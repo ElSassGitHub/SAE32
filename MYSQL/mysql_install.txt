@@ -1,0 +1,88 @@
+create database Elsass_Chat;
+use Elsass_Chat;
+
+create table comptes(
+id_compte int auto_increment primary key,
+identifiant varchar(40) unique,
+mdp varchar(40),
+statut_co varchar(10),
+salon int);
+
+alter table comptes add unique(identifiant);
+
+create table messages(
+id_message int auto_increment primary key,
+msg varchar(200),
+timestamp datetime,
+compte int,
+salon int);
+
+create table salon(
+id_salon int auto_increment primary key,
+nom_salon varchar(40),
+nb_users int);
+
+create table autorisations(
+compte int,
+salon int,
+autorise boolean default false,
+niv_auto int default 0);
+
+create table requetes(
+id_requete int auto_increment primary key,
+user int,
+admin int,
+salon int,
+solved boolean default (false));
+
+create table IP(
+compte int,
+IP varchar(15));
+
+alter table comptes add constraint FKCS foreign key (salon) references salon(id_salon);
+
+atler table messages add constraint FKMC foreign key (compte) references compte(id_compte);
+
+alter table messages add constraint FKMS foreign key (salon) references salon(id_salon);
+
+alter table autorisations add constraint FKAC foreign key (compte) references comptes(id_compte);
+
+alter table autorisations add constraint FKAS foreign key (salon) references salon(id_salon);
+
+alter table requetes add constraint FKRC1 foreign key (user) references comptes(id_compte);
+
+alter table requetes add constraint FKRC2 foreign key (admin) references comptes(id_compte);
+
+alter table requetes add constraint FKRS foreign key (salon) references salon(id_salon);
+
+alter table IP add constraint FKIC foreign key (compte) references comptes(id_compte);
+
+insert into salon (nom_salon, nb_users) values
+("general", 4),
+("balbla", 4),
+("compta", 2),
+("info", 2),
+("marketing", 2);
+
+insert into comptes (identifiant, mdp, salon) values
+("admin", "admin1234", 1),
+("admin_compta", "compta1234", 1),
+("admin_info", "info1234", 1),
+("admin_marketing", "marketing1234", 1);
+
+insert into autorisations (compte, salon, autorise, niv_auto) values
+(1, 1, true, 3),
+(1, 2, true, 3),
+(1, 3, true, 3),
+(1, 4, true, 3),
+(1, 5, true, 3),
+(2, 1, true, 1),
+(2, 2, true, 1),
+(2, 3, true, 2),
+(3, 1, true, 1),
+(3, 2, true, 1),
+(3, 4, true, 2),
+(4, 1, true, 1),
+(4, 2, true, 1),
+(4, 5, true, 2);
+
