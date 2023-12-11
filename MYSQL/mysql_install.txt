@@ -39,6 +39,13 @@ create table IP(
 compte int,
 IP varchar(15));
 
+create table sanctions(
+id_sanction int auto_increment primary key,
+compte int,
+IP varcchar(15),
+type varchar(4),
+date datetime);
+
 alter table comptes add constraint FKCS foreign key (salon) references salon(id_salon);
 
 atler table messages add constraint FKMC foreign key (compte) references compte(id_compte);
@@ -56,6 +63,8 @@ alter table requetes add constraint FKRC2 foreign key (admin) references comptes
 alter table requetes add constraint FKRS foreign key (salon) references salon(id_salon);
 
 alter table IP add constraint FKIC foreign key (compte) references comptes(id_compte);
+
+alter table sanctions add constraint FKSI foreign key (compte) references comptes(id_compte);
 
 insert into salon (nom_salon, nb_users) values
 ("general", 4),
