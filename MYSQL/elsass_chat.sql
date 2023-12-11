@@ -16,6 +16,14 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Current Database: `Elsass_Chat`
+--
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `Elsass_Chat` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
+
+USE `Elsass_Chat`;
+
+--
 -- Table structure for table `IP`
 --
 
@@ -29,6 +37,15 @@ CREATE TABLE `IP` (
   CONSTRAINT `FKIC` FOREIGN KEY (`compte`) REFERENCES `comptes` (`id_compte`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `IP`
+--
+
+LOCK TABLES `IP` WRITE;
+/*!40000 ALTER TABLE `IP` DISABLE KEYS */;
+/*!40000 ALTER TABLE `IP` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `autorisations`
@@ -48,6 +65,30 @@ CREATE TABLE `autorisations` (
   CONSTRAINT `FKAS` FOREIGN KEY (`salon`) REFERENCES `salon` (`id_salon`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `autorisations`
+--
+
+LOCK TABLES `autorisations` WRITE;
+/*!40000 ALTER TABLE `autorisations` DISABLE KEYS */;
+INSERT INTO `autorisations` VALUES
+(1,1,1,3),
+(1,2,1,3),
+(1,3,1,3),
+(1,4,1,3),
+(1,5,1,3),
+(2,1,1,1),
+(2,2,1,1),
+(2,3,1,2),
+(3,1,1,1),
+(3,2,1,1),
+(3,4,1,2),
+(4,1,1,1),
+(4,2,1,1),
+(4,5,1,2);
+/*!40000 ALTER TABLE `autorisations` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `comptes`
@@ -70,6 +111,20 @@ CREATE TABLE `comptes` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `comptes`
+--
+
+LOCK TABLES `comptes` WRITE;
+/*!40000 ALTER TABLE `comptes` DISABLE KEYS */;
+INSERT INTO `comptes` VALUES
+(1,'admin','admin1234','offline',1),
+(2,'admin_compta','compta1234','offline',1),
+(3,'admin_info','info1234','offline',1),
+(4,'admin_marketing','marketing1234','offline',1);
+/*!40000 ALTER TABLE `comptes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `messages`
 --
 
@@ -89,6 +144,15 @@ CREATE TABLE `messages` (
   CONSTRAINT `FKMS` FOREIGN KEY (`salon`) REFERENCES `salon` (`id_salon`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `messages`
+--
+
+LOCK TABLES `messages` WRITE;
+/*!40000 ALTER TABLE `messages` DISABLE KEYS */;
+/*!40000 ALTER TABLE `messages` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `requetes`
@@ -114,6 +178,15 @@ CREATE TABLE `requetes` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `requetes`
+--
+
+LOCK TABLES `requetes` WRITE;
+/*!40000 ALTER TABLE `requetes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `requetes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `salon`
 --
 
@@ -127,6 +200,49 @@ CREATE TABLE `salon` (
   PRIMARY KEY (`id_salon`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `salon`
+--
+
+LOCK TABLES `salon` WRITE;
+/*!40000 ALTER TABLE `salon` DISABLE KEYS */;
+INSERT INTO `salon` VALUES
+(1,'general',4),
+(2,'balbla',4),
+(3,'compta',2),
+(4,'info',2),
+(5,'marketing',2);
+/*!40000 ALTER TABLE `salon` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sanctions`
+--
+
+DROP TABLE IF EXISTS `sanctions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `sanctions` (
+  `id_sanction` int(11) NOT NULL AUTO_INCREMENT,
+  `compte` int(11) DEFAULT NULL,
+  `IP` varchar(15) DEFAULT NULL,
+  `type` varchar(4) DEFAULT NULL,
+  `date` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_sanction`),
+  KEY `FKSI` (`compte`),
+  CONSTRAINT `FKSI` FOREIGN KEY (`compte`) REFERENCES `comptes` (`id_compte`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sanctions`
+--
+
+LOCK TABLES `sanctions` WRITE;
+/*!40000 ALTER TABLE `sanctions` DISABLE KEYS */;
+/*!40000 ALTER TABLE `sanctions` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -137,4 +253,4 @@ CREATE TABLE `salon` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2023-12-07 16:49:27
+-- Dump completed on 2023-12-11 11:01:12
