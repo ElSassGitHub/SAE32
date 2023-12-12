@@ -6,11 +6,18 @@ def connection(host, port, server_socket):
     global active
     global clients
     global client_pseudo
+    global salons
+    global client_salon
 
     active = True
     clients = []
     client_threads = []
     client_pseudo = {}
+
+    salons = ["Général", "Blabla", "Comptabilité", "Informatique", "Marketing"]
+    client_salon = {}
+    for i in range(len(salons)):
+        client_salon[f"{salons[i]}"] = []
 
     while active != False:
         try:
@@ -32,6 +39,8 @@ def receive(conn, addr):
     global active
     global flag_all
     global client_pseudo
+    global salons
+    global client_salon
 
     flag = True
     flag_all = True
@@ -48,10 +57,13 @@ def receive(conn, addr):
             conn.send("pseudo_validated".encode())
             client_pseudo[f"{conn}"] = identifiant
             ok = True
+    
+    client_salon["Général"].append(conn)
+    salon = "Général"
 
     while flag != False and flag_all != False:
         msg = conn.recv(1024).decode()
-        print(f"message from {identifiant} is : {msg}")
+        print(f"[{salon}] {identifiant} > {msg}")
         if msg == "bye":
             flag = False
             reply = "server disconnection"
@@ -65,10 +77,18 @@ def receive(conn, addr):
                 client.send("server disconnection".encode())
                 time.sleep(2)
             active = False
+        elif msg == "salons":
+            list_salons = f"|{str(salons)}|"
+            conn.send(list_salons.encode())
+        elif msg in salons:
+            index = client_salon[f"{salon}"].index(conn)
+            client_salon[f"{salon}"].pop(index)
+            salon = msg
+            client_salon[f"{salon}"].append(conn)
         else:
-            for client in clients:
+            for client in client_salon[f"{salon}"]:
                 if client != conn and client_pseudo[f"{client}"] != "":
-                    client.send(f"message from {identifiant} is : {msg}".encode())
+                    client.send(f"[{salon}] {identifiant} > {msg}".encode())
 
 def main():
     host = '0.0.0.0'

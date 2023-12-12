@@ -22,11 +22,16 @@ def receive(client_socket):
 
     while flag_rcv != False:
         reply = client_socket.recv(1024).decode()
-        print(f"\n{reply}")
         if reply == "server disconnection":
+            print(f"\n{reply}")
             flag_rcv = False
             flag_snd = False
             client_socket.close()
+        elif reply[0] == "|" and reply[-1] == "|":
+            print("\nLes salons disponibles sont: ")
+            print(f"{reply}")
+        else:
+            print(f"\n{reply}")
 
 def connection(client_socket):
     reply = ""
