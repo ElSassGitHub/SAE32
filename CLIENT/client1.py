@@ -28,6 +28,18 @@ def receive(client_socket):
             flag_snd = False
             client_socket.close()
 
+def connection(client_socket):
+    reply = ""
+
+    while reply != "pseudo_validated":
+        reply = client_socket.recv(1024).decode()
+        if reply == "serveur_pseudo":
+            pseudo = input("Quel est votre pseudo ? ")
+            client_socket.send(pseudo.encode())
+        elif reply == "pseudo_not_allowed":
+            pseudo = input("Pseudo déjà utilisé. Merci d'en choisir un autre : ")
+            client_socket.send(pseudo.encode())
+
 def main():
     host = '127.0.0.1'
     port = 10000
@@ -35,8 +47,9 @@ def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((host, port))
 
-    send_thread = threading.Thread(target=send, args=[client_socket])
+    connection(client_socket)
     rcv_thread = threading.Thread(target=receive, args=[client_socket])
+    send_thread = threading.Thread(target=send, args=[client_socket])
     
     send_thread.start()
     rcv_thread.start()

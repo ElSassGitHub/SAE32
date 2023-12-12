@@ -5,16 +5,19 @@ import time
 def connection(host, port, server_socket):
     global active
     global clients
+    global client_pseudo
 
     active = True
     clients = []
     client_threads = []
+    client_pseudo = {}
 
     while active != False:
         try:
             conn, addr = server_socket.accept()
             client_thread = threading.Thread(target=receive, args=[conn, addr])
             clients.append(conn)
+            client_pseudo[f"{conn}"] = ""
             client_threads.append(client_thread)
             client_thread.start()
         except socket.timeout:
@@ -28,13 +31,27 @@ def connection(host, port, server_socket):
 def receive(conn, addr):
     global active
     global flag_all
+    global client_pseudo
 
     flag = True
     flag_all = True
+    ok = False
+
+    time.sleep(3)
+
+    conn.send("serveur_pseudo".encode())
+    while ok != True:
+        identifiant = conn.recv(1024).decode()
+        if identifiant in client_pseudo.values():
+            conn.send("pseudo_not_allowed".encode())
+        else:
+            conn.send("pseudo_validated".encode())
+            client_pseudo[f"{conn}"] = identifiant
+            ok = True
 
     while flag != False and flag_all != False:
         msg = conn.recv(1024).decode()
-        print(f"message from {addr} is : {msg}")
+        print(f"message from {identifiant} is : {msg}")
         if msg == "bye":
             flag = False
             reply = "server disconnection"
@@ -50,8 +67,8 @@ def receive(conn, addr):
             active = False
         else:
             for client in clients:
-                if client != conn:
-                    client.send(f"message from {addr} is : {msg}".encode())
+                if client != conn and client_pseudo[f"{client}"] != "":
+                    client.send(f"message from {identifiant} is : {msg}".encode())
 
 def main():
     host = '0.0.0.0'
