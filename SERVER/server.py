@@ -48,6 +48,10 @@ def receive(conn, addr):
                 client.send("server disconnection".encode())
                 time.sleep(2)
             active = False
+        else:
+            for client in clients:
+                if client != conn:
+                    client.send(f"message from {addr} is : {msg}".encode())
 
 def main():
     host = '0.0.0.0'

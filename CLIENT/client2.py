@@ -23,7 +23,7 @@ def receive(client_socket):
 
     while flag_rcv != False:
         reply = client_socket.recv(1024).decode()
-        print(f"\nreply is: {reply}")
+        print(f"\n{reply}")
         if reply == "server disconnection":
             flag_rcv = False
             flag_snd = False
