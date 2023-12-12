@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+from datetime import datetime, timedelta
 
 def connection(host, port, server_socket):
     global active
@@ -8,6 +9,8 @@ def connection(host, port, server_socket):
     global client_pseudo
     global salons
     global client_salon
+    global sanction_kick
+    global sanction_ban
 
     active = True
     clients = []
@@ -18,6 +21,9 @@ def connection(host, port, server_socket):
     client_salon = {}
     for i in range(len(salons)):
         client_salon[f"{salons[i]}"] = []
+
+    sanction_kick = {}
+    sanction_ban = []
 
     while active != False:
         try:
@@ -41,10 +47,13 @@ def receive(conn, addr):
     global client_pseudo
     global salons
     global client_salon
+    global sanction_kick
+    global sanction_ban
 
     flag = True
     flag_all = True
     ok = False
+    connection = str(conn)
 
     time.sleep(3)
 
@@ -57,9 +66,20 @@ def receive(conn, addr):
             conn.send("pseudo_validated".encode())
             client_pseudo[f"{conn}"] = identifiant
             ok = True
-    
+
     client_salon["Général"].append(conn)
     salon = "Général"
+
+    if identifiant in sanction_kick:
+        if sanction_kick[f"{identifiant}"] > datetime.now():
+            reply = f"You are banned until {sanction_kick[f'{identifiant}']}"
+            conn.send(reply.encode())
+            time.sleep(2)
+            conn.send("server disconnection".encode())
+            conn.close()
+            index_conn = clients.index(conn)
+            clients.pop(index_conn)
+            flag = False
 
     while flag != False and flag_all != False:
         msg = conn.recv(1024).decode()
@@ -77,6 +97,13 @@ def receive(conn, addr):
                 client.send("server disconnection".encode())
                 time.sleep(2)
             active = False
+        elif msg.startswith("/kick"):
+            command = msg.split(" ")
+            if command[1].startswith("@"):
+                target = command[1][1:]
+                current_time = datetime.now()
+                release_time = current_time + timedelta(hours=1)
+                sanction_kick[f"{target}"] = release_time
         elif msg == "salons":
             list_salons = f"|{str(salons)}|"
             conn.send(list_salons.encode())
@@ -89,6 +116,10 @@ def receive(conn, addr):
             for client in client_salon[f"{salon}"]:
                 if client != conn and client_pseudo[f"{client}"] != "":
                     client.send(f"[{salon}] {identifiant} > {msg}".encode())
+    
+    del client_pseudo[f"{connection}"]
+    index = client_salon[f"{salon}"].index(conn)
+    client_salon[f"{salon}"].pop(index)
 
 def main():
     host = '0.0.0.0'
