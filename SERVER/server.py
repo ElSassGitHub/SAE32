@@ -73,12 +73,19 @@ def receive(conn, addr):
     if identifiant in sanction_kick:
         current_time = datetime.now()
         if sanction_kick[f"{identifiant}"] > current_time:
-            reply = f"You are banned until {sanction_kick[f'{identifiant}']}"
+            reply = f"Ce compte est ban jusqu'à {sanction_kick[f'{identifiant}']}"
             conn.send(reply.encode())
             time.sleep(2)
             reply = "server disconnection"
             conn.send(reply.encode())
             flag = False
+    if identifiant in sanction_ban:
+        reply = f"Ce compte est ban permanément"
+        conn.send(reply.encode())
+        time.sleep(2)
+        reply = "server disconnection"
+        conn.send(reply.encode())
+        flag = False
 
     while flag != False and flag_all != False:
         try:
@@ -103,6 +110,14 @@ def receive(conn, addr):
                 current_time = datetime.now()
                 release_time = current_time + timedelta(hours=1)
                 sanction_kick[f"{target}"] = release_time
+                for k, v in client_pseudo.items():
+                    if v == target:
+                        k.send("server disconnection".encode())
+        elif msg.startswith("/ban"):
+            command = msg.split(" ")
+            if command[1].startswith("@"):
+                target = command[1][1:]
+                sanction_ban.append(target)
                 for k, v in client_pseudo.items():
                     if v == target:
                         k.send("server disconnection".encode())
