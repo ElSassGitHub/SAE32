@@ -11,6 +11,7 @@ def connection(host, port, server_socket):
     global client_salon
     global sanction_kick
     global sanction_ban
+    global superusers
 
     active = True
     clients = []
@@ -24,6 +25,7 @@ def connection(host, port, server_socket):
 
     sanction_kick = {}
     sanction_ban = []
+    superusers = ["joshua", "toto"]
 
     while active != False:
         try:
@@ -103,7 +105,7 @@ def receive(conn, addr):
                 client.send("server disconnection".encode())
                 time.sleep(2)
             active = False
-        elif msg.startswith("/kick"):
+        elif msg.startswith("/kick") and client_pseudo[conn] in superusers:
             command = msg.split(" ")
             if command[1].startswith("@"):
                 target = command[1][1:]
@@ -113,7 +115,10 @@ def receive(conn, addr):
                 for k, v in client_pseudo.items():
                     if v == target:
                         k.send("server disconnection".encode())
-        elif msg.startswith("/ban"):
+        elif msg.startswith("/kick") and client_pseudo[conn] not in superusers:
+            reply = "Vous n'êtes pas autorisé à utiliser la commande /kick"
+            conn.send(reply.encode())
+        elif msg.startswith("/ban") and client_pseudo[conn] in superusers:
             command = msg.split(" ")
             if command[1].startswith("@"):
                 target = command[1][1:]
@@ -121,6 +126,9 @@ def receive(conn, addr):
                 for k, v in client_pseudo.items():
                     if v == target:
                         k.send("server disconnection".encode())
+        elif msg.startswith("/ban") and client_pseudo[conn] not in superusers:
+            reply = "Vous n'êtes pas autorisé à utiliser la commande /ban"
+            conn.send(reply.encode())
         elif msg == "salons":
             list_salons = f"|{str(salons)}|"
             conn.send(list_salons.encode())
