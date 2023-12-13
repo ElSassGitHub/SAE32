@@ -27,10 +27,10 @@ def receive(client_socket):
             flag_rcv = False
             flag_snd = False
             client_socket.close()
-        elif reply[0] == "|" and reply[-1] == "|":
+        elif reply.startswith("|") and reply.endswith("|"):
             print("\nLes salons disponibles sont: ")
             print(f"{reply}")
-        else:
+        elif reply != "":
             print(f"\n{reply}")
 
 def connection(client_socket):
