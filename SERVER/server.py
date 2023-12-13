@@ -30,7 +30,6 @@ def connection(host, port, server_socket):
             conn, addr = server_socket.accept()
             client_thread = threading.Thread(target=receive, args=[conn, addr])
             clients.append(conn)
-            client_pseudo[f"{conn}"] = ""
             client_threads.append(client_thread)
             client_thread.start()
         except socket.timeout:
@@ -53,7 +52,6 @@ def receive(conn, addr):
     flag = True
     flag_all = True
     ok = False
-    connection = str(conn)
 
     time.sleep(3)
 
@@ -64,33 +62,34 @@ def receive(conn, addr):
             conn.send("pseudo_not_allowed".encode())
         else:
             conn.send("pseudo_validated".encode())
-            client_pseudo[f"{conn}"] = identifiant
+            client_pseudo[conn] = identifiant
             ok = True
+
+    time.sleep(2)
 
     client_salon["Général"].append(conn)
     salon = "Général"
 
     if identifiant in sanction_kick:
-        if sanction_kick[f"{identifiant}"] > datetime.now():
+        current_time = datetime.now()
+        if sanction_kick[f"{identifiant}"] > current_time:
             reply = f"You are banned until {sanction_kick[f'{identifiant}']}"
             conn.send(reply.encode())
             time.sleep(2)
-            conn.send("server disconnection".encode())
-            conn.close()
-            index_conn = clients.index(conn)
-            clients.pop(index_conn)
+            reply = "server disconnection"
+            conn.send(reply.encode())
             flag = False
 
     while flag != False and flag_all != False:
-        msg = conn.recv(1024).decode()
+        try:
+            msg = conn.recv(1024).decode()
+        except OSError:
+            msg = ""
         print(f"[{salon}] {identifiant} > {msg}")
         if msg == "bye":
             flag = False
             reply = "server disconnection"
             conn.send(reply.encode())
-            conn.close()
-            index_conn = clients.index(conn)
-            clients.pop(index_conn)
         elif msg == "stop":
             flag_all = False
             for client in clients:
@@ -104,6 +103,9 @@ def receive(conn, addr):
                 current_time = datetime.now()
                 release_time = current_time + timedelta(hours=1)
                 sanction_kick[f"{target}"] = release_time
+                for k, v in client_pseudo.items():
+                    if v == target:
+                        k.send("server disconnection".encode())
         elif msg == "salons":
             list_salons = f"|{str(salons)}|"
             conn.send(list_salons.encode())
@@ -112,12 +114,19 @@ def receive(conn, addr):
             client_salon[f"{salon}"].pop(index)
             salon = msg
             client_salon[f"{salon}"].append(conn)
-        else:
+        elif msg != "":
             for client in client_salon[f"{salon}"]:
-                if client != conn and client_pseudo[f"{client}"] != "":
+                if client != conn and client_pseudo[client] != "":
                     client.send(f"[{salon}] {identifiant} > {msg}".encode())
-    
-    del client_pseudo[f"{connection}"]
+        elif msg == "":
+            flag = False
+
+    conn.close()
+    index_conn = clients.index(conn)
+    clients.pop(index_conn)
+
+    del client_pseudo[conn]
+
     index = client_salon[f"{salon}"].index(conn)
     client_salon[f"{salon}"].pop(index)
 
