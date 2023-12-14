@@ -12,6 +12,9 @@ def connection(host, port, server_socket):
     global sanction_kick
     global sanction_ban
     global superusers
+    global admin_salon
+    global salon_acces
+    global salon_request
 
     active = True
     clients = []
@@ -19,13 +22,14 @@ def connection(host, port, server_socket):
     client_pseudo = {}
 
     salons = ["Général", "Blabla", "Comptabilité", "Informatique", "Marketing"]
-    client_salon = {}
-    for i in range(len(salons)):
-        client_salon[f"{salons[i]}"] = []
+    client_salon = {"Général":[], "Blabla":[], "Comptabilité":[], "Informatique":[], "Marketing":[]}
 
     sanction_kick = {}
     sanction_ban = []
     superusers = ["joshua", "toto"]
+    admin_salon = {"Général":"none", "Blabla":"server", "Comptabilité":"admin_compta", "Informatique":"admin_info", "Marketing":"admin_market"}
+    salon_acces = {"Général":[], "Blabla":[], "Comptabilité":[admin_salon["Comptabilité"]], "Informatique":[admin_salon["Informatique"]], "Marketing":[admin_salon["Marketing"]]}
+    salon_request = {admin_salon["Blabla"]:[], admin_salon["Comptabilité"]:[], admin_salon["Informatique"]:[], admin_salon["Marketing"]:[]}
 
     while active != False:
         try:
@@ -50,6 +54,8 @@ def receive(conn, addr):
     global client_salon
     global sanction_kick
     global sanction_ban
+    global salon_acces
+    global salon_request
 
     flag = True
     flag_all = True
@@ -71,6 +77,8 @@ def receive(conn, addr):
 
     client_salon["Général"].append(conn)
     salon = "Général"
+    if identifiant not in salon_acces[salon]:
+        salon_acces[salon].append(identifiant)
 
     if identifiant in sanction_kick:
         current_time = datetime.now()
@@ -100,10 +108,9 @@ def receive(conn, addr):
             reply = "server disconnection"
             conn.send(reply.encode())
         elif msg == "stop":
-            flag_all = False
             for client in clients:
-                client.send("server disconnection".encode())
-                time.sleep(2)
+                client.send("server disconnection".encode())                
+            flag_all = False
             active = False
         elif msg.startswith("/kick") and client_pseudo[conn] in superusers:
             command = msg.split(" ")
@@ -129,29 +136,83 @@ def receive(conn, addr):
         elif msg.startswith("/ban") and client_pseudo[conn] not in superusers:
             reply = "Vous n'êtes pas autorisé à utiliser la commande /ban"
             conn.send(reply.encode())
+        elif msg.startswith("/access"):
+            command = msg.split(" ")
+            if len(command) == 2:
+                if command[1].startswith("salon_"):
+                    target = command[1][6:]
+                    if identifiant not in salon_acces[target]:
+                        reply = f"Pour accéder à ce salon, vous devez faire une requête à {admin_salon[target]}"
+                        conn.send(reply.encode())
+                    else:
+                        client_salon[salon].remove(conn)
+                        salon = target
+                        client_salon[salon].append(conn)
+            elif len(command) == 3:
+                if command[1].startswith("salon_") and command[2].startswith("@"):
+                    target = command[2][1:]
+                    if target == admin_salon["Blabla"]:
+                        salon_acces["Blabla"].append(identifiant)
+                        reply = "Accès au salon 'Blabla' accordé"
+                        conn.send(reply.encode())
+                    elif target == admin_salon[command[1][6:]]:
+                        reply = f"Une requête à été faite auprès de {target} pour accéder au salon {command[1][6:]}"
+                        conn.send(reply.encode())
+                        salon_request[target].append(identifiant)
+        elif msg == "requests" and identifiant in admin_salon.values():
+            reply = f"Requêtes pour l'utilisateur {identifiant}:\n"
+            for i in range(len(salon_request[identifiant])):
+                reply+= f" {salon_request[identifiant][i]} |"
+            reply = reply[:-2]
+            conn.send(reply.encode())
+        elif msg.startswith("accept_request@") and identifiant in admin_salon.values():
+            command = msg.split("@")
+            if command[1] in salon_request[identifiant]:
+                for indiv_salon in admin_salon:
+                    if admin_salon[indiv_salon] == identifiant:
+                        if command[1] not in salon_acces[indiv_salon]:
+                            salon_acces[indiv_salon].append(command[1])
+                            for id in client_pseudo:
+                                if client_pseudo[id] == command[1]:
+                                    reply = f"Votre accès au salon {indiv_salon} a été permis"
+                                    id.send(reply.encode())
+                        else:
+                            reply = f"L'utilisateur {command[1]} a déjà accés au salon {indiv_salon}"
+            else:
+                reply = f"L'utilisateur {command[1]} n'a pas émis de requêtes"
+                conn.send(reply.encode())
+        elif msg.startswith("deny_request@") and identifiant in admin_salon.values():
+            command = msg.split("@")
+            if command[1] in salon_request[identifiant]:
+                for indiv_salon in admin_salon:
+                    if admin_salon[indiv_salon] == identifiant:
+                        if command[1] not in salon_acces[indiv_salon]:
+                            salon_request[identifiant].remove(command[1])
+                            for id in client_pseudo:
+                                if client_pseudo[id] == command[1]:
+                                    reply = f"Votre accès au salon {indiv_salon} a été refusé"
+                                    id.send(reply.encode())
+                        else:
+                            reply = f"L'utilisateur {command[1]} a déjà accés au salon {indiv_salon}"
+            else:
+                reply = f"L'utilisateur {command[1]} n'a pas émis de requêtes"
+                conn.send(reply.encode())
         elif msg == "salons":
             list_salons = f"|{str(salons)}|"
             conn.send(list_salons.encode())
-        elif msg in salons:
-            index = client_salon[f"{salon}"].index(conn)
-            client_salon[f"{salon}"].pop(index)
-            salon = msg
-            client_salon[f"{salon}"].append(conn)
         elif msg != "":
-            for client in client_salon[f"{salon}"]:
+            for client in client_salon[salon]:
                 if client != conn and client_pseudo[client] != "":
                     client.send(f"[{salon}] {identifiant} > {msg}".encode())
         elif msg == "":
             flag = False
 
     conn.close()
-    index_conn = clients.index(conn)
-    clients.pop(index_conn)
+    clients.remove(conn)
 
     del client_pseudo[conn]
 
-    index = client_salon[f"{salon}"].index(conn)
-    client_salon[f"{salon}"].pop(index)
+    client_salon[salon].remove(conn)
 
 def main():
     host = '0.0.0.0'
