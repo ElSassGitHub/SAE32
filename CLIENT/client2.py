@@ -5,6 +5,8 @@ import time
 def send(client_socket):
     global flag_snd
     flag_snd = True
+    cursor_up = "\033[1A"
+    clear = "\x1b[2K"
 
     try:
         while flag_snd != False:
@@ -12,6 +14,7 @@ def send(client_socket):
             msg = input("Entrez le message à envoyer: ")
             if msg != "":
                 client_socket.send(msg.encode())
+            print(cursor_up + clear, end="")
     except OSError:
         print("La connection avec le serveur a été interrompue")
 
@@ -20,30 +23,37 @@ def receive(client_socket):
 
     flag_rcv = True
 
+    cursor_up = "\033[1A"
+    clear = "\x1b[2K"
+
     while flag_rcv != False:
         reply = client_socket.recv(1024).decode()
+        print("\n" + cursor_up + clear, end="")
         if reply == "server disconnection":
-            print(f"\n{reply}")
+            print(f"{reply}\n")
             flag_rcv = False
             flag_snd = False
             client_socket.close()
         elif reply.startswith("|") and reply.endswith("|"):
-            print("\nLes salons disponibles sont: ")
-            print(f"{reply}")
+            print("Les salons disponibles sont: ")
+            print(f"{reply}\n")
         elif reply != "":
-            print(f"\n{reply}")
+            print(f"{reply}\n")
 
 def connection(client_socket):
     reply = ""
 
-    while reply != "pseudo_validated":
+    while reply != "account_validated":
         reply = client_socket.recv(1024).decode()
-        if reply == "serveur_pseudo":
-            pseudo = input("Quel est votre pseudo ? ")
-            client_socket.send(pseudo.encode())
-        elif reply == "pseudo_not_allowed":
-            pseudo = input("Pseudo déjà utilisé. Merci d'en choisir un autre : ")
-            client_socket.send(pseudo.encode())
+        if reply == "serveur_login":
+            login = input("Quel est votre login ? ")
+            client_socket.send(login.encode())
+        elif reply == "serveur_password":
+            password = input("Quel est votre mot de passe ? ")
+            client_socket.send(password.encode())
+        elif reply == "erroneous_account":
+            print("Le login et le mot de passe sont incorrects. \n")
+    print(f"\nBienvenue sur le serveur Elsass_Chat, {login} !\n")
 
 def main():
     host = '127.0.0.1'
