@@ -64,28 +64,48 @@ def receive(conn, addr):
     flag = True
     flag_all = True
     ok = False
+    account_done = False
 
-    time.sleep(3)
+    while account_done != True:
+        time.sleep(0.5)
+        conn.send("account_exist".encode())
+        account_exists = conn.recv(1024).decode().lower()
+        if account_exists == "yes" or account_exists == "y":
+            conn.send("initiate".encode())
+            while ok != True:
+                time.sleep(1)
+                conn.send("serveur_login".encode())
+                login = conn.recv(1024).decode()
+                conn.send("serveur_password".encode())
+                password = conn.recv(1024).decode()
+                if login in client_pseudo.values():
+                    conn.send("erroneous_account".encode())
+                elif login in accounts:
+                    if password == accounts[login]:
+                        conn.send("account_validated".encode())
+                        client_pseudo[conn] = login
+                        ok = True
+                    elif password != accounts[login]:
+                        conn.send("erroneous_account".encode())
+                elif login not in accounts:
+                    conn.send("erroneous_account".encode())
+            account_done = True
+        elif account_exists == "no" or account_exists == "n":
+            conn.send("initiate".encode())
+            time.sleep(0.5)
 
-    while ok != True:
-        time.sleep(1)
-        conn.send("serveur_login".encode())
-        login = conn.recv(1024).decode()
-        conn.send("serveur_password".encode())
-        password = conn.recv(1024).decode()
-        if login in client_pseudo.values():
-            conn.send("erroneous_account".encode())
-        elif login in accounts:
-            if password == accounts[login]:
-                conn.send("account_validated".encode())
-                client_pseudo[conn] = login
-                ok = True
-            elif password != accounts[login]:
-                conn.send("erroneous_account".encode())
-        elif login not in accounts:
-            conn.send("erroneous_account".encode())
+            conn.send("serveur_login".encode())
+            login = conn.recv(1024).decode()
+            conn.send("serveur_password".encode())
+            password = conn.recv(1024).decode()
 
-    time.sleep(2)
+            accounts[login] = password
+            client_pseudo[conn] = login
+
+            account_done = True
+            conn.send("account_validated".encode())        
+        else:
+            conn.send("account_restart".encode())
 
     client_salon["Général"].append(conn)
     salon = "Général"
@@ -95,7 +115,7 @@ def receive(conn, addr):
     if login in sanction_ban:
         reply = f"Ce compte est ban permanément"
         conn.send(reply.encode())
-        time.sleep(2)
+        time.sleep(0.5)
         reply = "server disconnection"
         conn.send(reply.encode())
         flag = False
@@ -104,7 +124,7 @@ def receive(conn, addr):
         if sanction_kick[login] > current_time:
             reply = f"Ce compte est ban jusqu'à {sanction_kick[login]}"
             conn.send(reply.encode())
-            time.sleep(2)
+            time.sleep(0.5)
             reply = "server disconnection"
             conn.send(reply.encode())
             flag = False
@@ -115,7 +135,7 @@ def receive(conn, addr):
         except OSError:
             msg = ""
         print(f"[{salon}] {login} > {msg}")
-        if msg == "bye":
+        if msg == "/bye":
             flag = False
             reply = "server disconnection"
             conn.send(reply.encode())
@@ -131,12 +151,18 @@ def receive(conn, addr):
             command = msg.split(" ")
             if command[1].startswith("@"):
                 target = command[1][1:]
-                current_time = datetime.now()
-                release_time = current_time + timedelta(hours=1)
-                sanction_kick[f"{target}"] = release_time
-                for k, v in client_pseudo.items():
-                    if v == target:
-                        k.send("server disconnection".encode())
+                if target in accounts:
+                    current_time = datetime.now()
+                    release_time = current_time + timedelta(hours=1)
+                    sanction_kick[f"{target}"] = release_time
+                    for k, v in client_pseudo.items():
+                        if v == target:
+                            k.send("server disconnection".encode())
+                    reply = f"/!\ L'utilisateur {target} a été ban jusqu'à {release_time}"
+                    conn.send(reply.encode())
+                elif target not in accounts:
+                    reply = f"/!\ L'utilisateur {target} n'existe pas"
+                    conn.send(reply.encode())
         elif msg.startswith("/kick") and client_pseudo[conn] not in superusers:
             reply = "Vous n'êtes pas autorisé à utiliser la commande /kick"
             conn.send(reply.encode())
@@ -144,10 +170,16 @@ def receive(conn, addr):
             command = msg.split(" ")
             if command[1].startswith("@"):
                 target = command[1][1:]
-                sanction_ban.append(target)
-                for k, v in client_pseudo.items():
-                    if v == target:
-                        k.send("server disconnection".encode())
+                if target in accounts:
+                    sanction_ban.append(target)
+                    for k, v in client_pseudo.items():
+                        if v == target:
+                            k.send("server disconnection".encode())
+                    reply = f"/!\ L'utilisateur {target} a été ban indéfiniment"
+                    conn.send(reply.encode())
+                elif target not in accounts:
+                    reply = f"/!\ L'utilisateur {target} n'existe pas"
+                    conn.send(reply.encode())
         elif msg.startswith("/ban") and client_pseudo[conn] not in superusers:
             reply = "Vous n'êtes pas autorisé à utiliser la commande /ban"
             conn.send(reply.encode())
