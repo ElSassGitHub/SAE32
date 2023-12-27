@@ -16,12 +16,44 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Current Database: `Elsass_Chat`
+-- Table structure for table `Autorisations`
 --
 
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `Elsass_Chat` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
+DROP TABLE IF EXISTS `Autorisations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `Autorisations` (
+  `compte` int(11) DEFAULT NULL,
+  `salon` int(11) DEFAULT NULL,
+  `niv_auto` int(11) DEFAULT 0,
+  KEY `FKAC` (`compte`),
+  KEY `FKAS` (`salon`),
+  CONSTRAINT `FKAC` FOREIGN KEY (`compte`) REFERENCES `Comptes` (`id_compte`),
+  CONSTRAINT `FKAS` FOREIGN KEY (`salon`) REFERENCES `Salon` (`id_salon`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-USE `Elsass_Chat`;
+--
+-- Table structure for table `Comptes`
+--
+
+DROP TABLE IF EXISTS `Comptes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `Comptes` (
+  `id_compte` int(11) NOT NULL AUTO_INCREMENT,
+  `login` varchar(40) DEFAULT NULL,
+  `mdp` varchar(40) DEFAULT NULL,
+  `pseudo` varchar(40) DEFAULT NULL,
+  `statut_co` varchar(10) DEFAULT 'offline',
+  `salon` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id_compte`),
+  UNIQUE KEY `identifiant` (`login`),
+  UNIQUE KEY `pseudo` (`pseudo`),
+  KEY `FKCS` (`salon`),
+  CONSTRAINT `FKCS` FOREIGN KEY (`salon`) REFERENCES `Salon` (`id_salon`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Table structure for table `IP`
@@ -31,218 +63,90 @@ DROP TABLE IF EXISTS `IP`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `IP` (
+  `id_IP` int(11) NOT NULL AUTO_INCREMENT,
   `compte` int(11) DEFAULT NULL,
   `IP` varchar(15) DEFAULT NULL,
+  PRIMARY KEY (`id_IP`),
   KEY `FKIC` (`compte`),
-  CONSTRAINT `FKIC` FOREIGN KEY (`compte`) REFERENCES `comptes` (`id_compte`)
+  CONSTRAINT `FKIC` FOREIGN KEY (`compte`) REFERENCES `Comptes` (`id_compte`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `IP`
+-- Table structure for table `Messages`
 --
 
-LOCK TABLES `IP` WRITE;
-/*!40000 ALTER TABLE `IP` DISABLE KEYS */;
-/*!40000 ALTER TABLE `IP` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `autorisations`
---
-
-DROP TABLE IF EXISTS `autorisations`;
+DROP TABLE IF EXISTS `Messages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `autorisations` (
-  `compte` int(11) DEFAULT NULL,
-  `salon` int(11) DEFAULT NULL,
-  `autorise` tinyint(1) DEFAULT 0,
-  `niv_auto` int(11) DEFAULT 0,
-  KEY `FKAC` (`compte`),
-  KEY `FKAS` (`salon`),
-  CONSTRAINT `FKAC` FOREIGN KEY (`compte`) REFERENCES `comptes` (`id_compte`),
-  CONSTRAINT `FKAS` FOREIGN KEY (`salon`) REFERENCES `salon` (`id_salon`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `autorisations`
---
-
-LOCK TABLES `autorisations` WRITE;
-/*!40000 ALTER TABLE `autorisations` DISABLE KEYS */;
-INSERT INTO `autorisations` VALUES
-(1,1,1,3),
-(1,2,1,3),
-(1,3,1,3),
-(1,4,1,3),
-(1,5,1,3),
-(2,1,1,1),
-(2,2,1,1),
-(2,3,1,2),
-(3,1,1,1),
-(3,2,1,1),
-(3,4,1,2),
-(4,1,1,1),
-(4,2,1,1),
-(4,5,1,2);
-/*!40000 ALTER TABLE `autorisations` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `comptes`
---
-
-DROP TABLE IF EXISTS `comptes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `comptes` (
-  `id_compte` int(11) NOT NULL AUTO_INCREMENT,
-  `identifiant` varchar(40) DEFAULT NULL,
-  `mdp` varchar(40) DEFAULT NULL,
-  `statut_co` varchar(10) DEFAULT 'offline',
-  `salon` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id_compte`),
-  UNIQUE KEY `identifiant` (`identifiant`),
-  KEY `FKCS` (`salon`),
-  CONSTRAINT `FKCS` FOREIGN KEY (`salon`) REFERENCES `salon` (`id_salon`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `comptes`
---
-
-LOCK TABLES `comptes` WRITE;
-/*!40000 ALTER TABLE `comptes` DISABLE KEYS */;
-INSERT INTO `comptes` VALUES
-(1,'admin','admin1234','offline',1),
-(2,'admin_compta','compta1234','offline',1),
-(3,'admin_info','info1234','offline',1),
-(4,'admin_marketing','marketing1234','offline',1);
-/*!40000 ALTER TABLE `comptes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `messages`
---
-
-DROP TABLE IF EXISTS `messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `messages` (
+CREATE TABLE `Messages` (
   `id_message` int(11) NOT NULL AUTO_INCREMENT,
-  `msg` varchar(200) DEFAULT NULL,
-  `timestamp` datetime DEFAULT NULL,
+  `content` text DEFAULT NULL,
+  `date` datetime DEFAULT NULL,
   `compte` int(11) DEFAULT NULL,
   `salon` int(11) DEFAULT NULL,
   PRIMARY KEY (`id_message`),
   KEY `FKMC` (`compte`),
   KEY `FKMS` (`salon`),
-  CONSTRAINT `FKMC` FOREIGN KEY (`compte`) REFERENCES `comptes` (`id_compte`),
-  CONSTRAINT `FKMS` FOREIGN KEY (`salon`) REFERENCES `salon` (`id_salon`)
+  CONSTRAINT `FKMC` FOREIGN KEY (`compte`) REFERENCES `Comptes` (`id_compte`),
+  CONSTRAINT `FKMS` FOREIGN KEY (`salon`) REFERENCES `Salon` (`id_salon`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `messages`
+-- Table structure for table `Requetes`
 --
 
-LOCK TABLES `messages` WRITE;
-/*!40000 ALTER TABLE `messages` DISABLE KEYS */;
-/*!40000 ALTER TABLE `messages` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `requetes`
---
-
-DROP TABLE IF EXISTS `requetes`;
+DROP TABLE IF EXISTS `Requetes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `requetes` (
-  `id_requete` int(11) NOT NULL AUTO_INCREMENT,
-  `user` int(11) DEFAULT NULL,
+CREATE TABLE `Requetes` (
+  `id_request` int(11) NOT NULL AUTO_INCREMENT,
+  `compte` int(11) DEFAULT NULL,
   `admin` int(11) DEFAULT NULL,
   `salon` int(11) DEFAULT NULL,
-  `solved` tinyint(1) DEFAULT 0,
-  PRIMARY KEY (`id_requete`),
-  KEY `FKRC1` (`user`),
+  PRIMARY KEY (`id_request`),
+  KEY `FKRC1` (`compte`),
   KEY `FKRC2` (`admin`),
   KEY `FKRS` (`salon`),
-  CONSTRAINT `FKRC1` FOREIGN KEY (`user`) REFERENCES `comptes` (`id_compte`),
-  CONSTRAINT `FKRC2` FOREIGN KEY (`admin`) REFERENCES `comptes` (`id_compte`),
-  CONSTRAINT `FKRS` FOREIGN KEY (`salon`) REFERENCES `salon` (`id_salon`)
+  CONSTRAINT `FKRC1` FOREIGN KEY (`compte`) REFERENCES `Comptes` (`id_compte`),
+  CONSTRAINT `FKRC2` FOREIGN KEY (`admin`) REFERENCES `Comptes` (`id_compte`),
+  CONSTRAINT `FKRS` FOREIGN KEY (`salon`) REFERENCES `Salon` (`id_salon`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `requetes`
+-- Table structure for table `Salon`
 --
 
-LOCK TABLES `requetes` WRITE;
-/*!40000 ALTER TABLE `requetes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `requetes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `salon`
---
-
-DROP TABLE IF EXISTS `salon`;
+DROP TABLE IF EXISTS `Salon`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `salon` (
+CREATE TABLE `Salon` (
   `id_salon` int(11) NOT NULL AUTO_INCREMENT,
   `nom_salon` varchar(40) DEFAULT NULL,
-  `nb_users` int(11) DEFAULT NULL,
   PRIMARY KEY (`id_salon`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `salon`
+-- Table structure for table `Sanctions`
 --
 
-LOCK TABLES `salon` WRITE;
-/*!40000 ALTER TABLE `salon` DISABLE KEYS */;
-INSERT INTO `salon` VALUES
-(1,'general',4),
-(2,'balbla',4),
-(3,'compta',2),
-(4,'info',2),
-(5,'marketing',2);
-/*!40000 ALTER TABLE `salon` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `sanctions`
---
-
-DROP TABLE IF EXISTS `sanctions`;
+DROP TABLE IF EXISTS `Sanctions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `sanctions` (
+CREATE TABLE `Sanctions` (
   `id_sanction` int(11) NOT NULL AUTO_INCREMENT,
   `compte` int(11) DEFAULT NULL,
   `IP` varchar(15) DEFAULT NULL,
   `type` varchar(4) DEFAULT NULL,
   `date` datetime DEFAULT NULL,
   PRIMARY KEY (`id_sanction`),
-  KEY `FKSI` (`compte`),
-  CONSTRAINT `FKSI` FOREIGN KEY (`compte`) REFERENCES `comptes` (`id_compte`)
+  KEY `FKSC` (`compte`),
+  CONSTRAINT `FKSC` FOREIGN KEY (`compte`) REFERENCES `Comptes` (`id_compte`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `sanctions`
---
-
-LOCK TABLES `sanctions` WRITE;
-/*!40000 ALTER TABLE `sanctions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `sanctions` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -253,4 +157,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2023-12-11 11:01:12
+-- Dump completed on 2023-12-27 15:30:39
