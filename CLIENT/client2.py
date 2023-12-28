@@ -35,8 +35,13 @@ def receive(client_socket):
             flag_snd = False
             client_socket.close()
         elif reply.startswith("|") and reply.endswith("|"):
+            salons = reply[2:-2]
+            list_salons = salons.split(", ")
             print("Les salons disponibles sont: ")
-            print(f"{reply}\n")
+            for salon in list_salons:
+                option_salon = salon.replace("'", "")
+                print(f"-> {option_salon}")
+            print("\n")
         elif reply != "":
             print(f"{reply}\n")
 
@@ -59,14 +64,21 @@ def connection(client_socket):
                     elif reply == "serveur_password":
                         password = input("Quel est votre mot de passe ? ")
                         client_socket.send(password.encode())
+                    elif reply == "account_pseudo":
+                        pseudo = input("Quel est votre pseudo ? ")
+                        client_socket.send(pseudo.encode())
+                    elif reply == "recv_pseudo":
+                        pseudo = client_socket.recv(1024).decode()
                     elif reply == "erroneous_account":
                         print("Le login et le mot de passe sont incorrects. \n")
+                    elif reply == "pseudo_used":
+                        print("Le pseudo est déjà utilisé par un autre utilisateur. \n")
                     elif reply == "account_validated":
                         account = True
             elif next_step == "account_restart":
                 pass
 
-    print(f"\nBienvenue sur le serveur Elsass_Chat, {login} !\n")
+    print(f"\nBienvenue sur le serveur Elsass_Chat, {pseudo} !\n")
 
 def main():
     host = '127.0.0.1'
