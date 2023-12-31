@@ -1,5 +1,8 @@
 create database Elsass_Chat;
 use Elsass_Chat;
+create user 'server'@'localhost' identified by 'SAE32';
+grant all privileges on Elsass_Chat.* to server@localhost;
+flush privileges;
 
 create table Comptes(
 id_compte int auto_increment primary key,
