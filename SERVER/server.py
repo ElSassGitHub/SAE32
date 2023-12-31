@@ -1,7 +1,99 @@
+#create user 'server'@'localhost' identified by 'SAE32';
+#grant all privileges on Elsass_Chat.* to server@localhost;
+#flush privileges;
+
 import socket
 import threading
 import time
 from datetime import datetime, timedelta
+import MySQLdb
+
+def register_msg(msg, login, salon):
+    query = f"SELECT id_compte FROM Comptes WHERE login='{login}'"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    id_compte = result[0][0]
+
+    query = f"SELECT id_salon FROM Salon WHERE nom_salon='{salon}'"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    nom_salon = result[0][0]
+
+    current_time = datetime.now()
+    query = "INSERT INTO Messages (content, date, compte, salon) VALUES (%s, %s, %s, %s)"
+    cursor.execute(query, (msg, current_time, id_compte, nom_salon))
+    connection.commit()
+    print("done")
+
+def check_database():
+    global clients
+    global client_conn
+    global salons
+    global client_salon
+    global sanction_kick
+    global sanction_ban
+    global superusers
+    global admin_salon
+    global salon_acces
+    global salon_request
+    global accounts
+    global aliases
+    global account_IP
+    global cursor
+    global connection
+
+    query = "SELECT Comptes.login, Sanctions.date FROM Sanctions INNER JOIN Comptes ON Sanctions.compte=Comptes.id_compte WHERE type='kick'"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        sanction_kick[result[i][0]] = result[i][1]
+    
+    query = "SELECT Comptes.login, Sanctions.date FROM Sanctions INNER JOIN Comptes ON Sanctions.compte=Comptes.id_compte WHERE type='ban'"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        sanction_ban.append(result[i][0])
+
+    query = "SELECT distinct(login) FROM Comptes INNER JOIN Autorisations ON Comptes.id_compte=Autorisations.compte WHERE niv_auto=3"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        superusers.append(result[0][0])
+
+    query = "SELECT Comptes.login, Salon.nom_salon FROM Comptes INNER JOIN Autorisations ON Comptes.id_compte=Autorisations.compte INNER JOIN Salon ON Autorisations.salon=Salon.id_salon WHERE Autorisations.niv_auto=2"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        admin_salon[result[i][1]] = result[i][0]
+        
+    query = "SELECT Requetes.admin, Comptes.pseudo FROM Requetes INNER JOIN Comptes ON Requetes.compte=Comptes.id_compte"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        query = f"SELECT login FROM Comptes WHERE id_compte={result[i][0]}"
+        cursor.execute(query)
+        result2 = cursor.fetchall()
+        if result[i][1] not in salon_request[f"{result2[i][0]}"]:
+            salon_request[f"{result2[i][0]}"].append(result[i][1])
+
+    query = "SELECT Comptes.login, Salon.nom_salon FROM Comptes INNER JOIN Autorisations ON Comptes.id_compte=Autorisations.compte INNER JOIN Salon ON Autorisations.salon=Salon.id_salon WHERE Autorisations.niv_auto>0"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        salon_acces[result[i][1]].append(result[i][0])    
+
+    query = "SELECT login, mdp, pseudo FROM Comptes"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        accounts[result[i][0]] = result[i][1]
+        aliases[result[i][0]] = result[i][2]
+
+    query = "SELECT Comptes.login, IP.IP FROM Comptes INNER JOIN IP ON Comptes.id_compte=IP.compte"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        account_IP[result[i][0]] = result[i][1]
 
 def connection(host, port, server_socket):
     global active
@@ -17,37 +109,50 @@ def connection(host, port, server_socket):
     global salon_request
     global accounts
     global aliases
+    global account_IP
+    global cursor
+    global connection
+
+    connection = MySQLdb.connect(
+        host="127.0.0.1",
+        user="server",
+        password="SAE32",
+        database="Elsass_Chat"
+    )
+
+    cursor = connection.cursor()
 
     active = True
     clients = []
     client_threads = []
     client_conn = {}
 
-    salons = ["Général", "Blabla", "Comptabilité", "Informatique", "Marketing"]
-    client_salon = {"Général":[], "Blabla":[], "Comptabilité":[], "Informatique":[], "Marketing":[]}
+    salons = []
+    client_salon = {}
+    salon_acces = {}
+    query = "SELECT * FROM Salon"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        salons.append(result[i][1])
+        client_salon[result[i][1]] = []
+        salon_acces[result[i][1]] = []
 
     sanction_kick = {}
     sanction_ban = []
-    superusers = ["joshua", "toto"]
-    admin_salon = {"Général":"none", "Blabla":"server", "Comptabilité":"admin_compta", "Informatique":"admin_info", "Marketing":"admin_market"}
-    salon_acces = {"Général":[], "Blabla":[], "Comptabilité":[admin_salon["Comptabilité"]], "Informatique":[admin_salon["Informatique"]], "Marketing":[admin_salon["Marketing"]]}
-    salon_request = {admin_salon["Blabla"]:[], admin_salon["Comptabilité"]:[], admin_salon["Informatique"]:[], admin_salon["Marketing"]:[]}
+    superusers = []
+    admin_salon = {salons[0]:"none", salons[1]:"server"}
 
-    accounts = {"joshua":"1234", 
-                "toto":"admin", 
-                "ayrton":"maradan", 
-                "olivier":"guittet",
-                "admin_compta":"test1",
-                "admin_info":"test2",
-                "admin_market":"test3"}
+    salon_request = {admin_salon[salons[1]]:[]}
+    query = f"SELECT Comptes.login FROM Comptes INNER JOIN Autorisations ON Comptes.id_compte=Autorisations.compte WHERE Autorisations.niv_auto=2"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        salon_request[result[i][0]] = []
 
-    aliases = {"joshua":"JOSHUA",
-               "toto":"SERVER_ADMIN",
-               "ayrton":"AYRTON",
-               "olivier":"OLIVIER",
-               "admin_compta":"George",
-               "admin_info":"Alex",
-               "admin_market":"Clara"}
+    accounts = {}
+    aliases = {}
+    account_IP = {}
 
     while active != False:
         try:
@@ -62,6 +167,8 @@ def connection(host, port, server_socket):
     for client_thread in client_threads:
         client_thread.join()
     
+    cursor.close()
+    connection.close()
     print("server shutdown")
 
 def receive(conn, addr):
@@ -76,12 +183,16 @@ def receive(conn, addr):
     global salon_request
     global accounts
     global aliases
+    global account_IP
+    global cursor
+    global connection
 
     flag = True
     flag_all = True
     ok = False
     account_done = False
-    pseudo_ok = False
+
+    check_database()
 
     while account_done != True:
         time.sleep(0.5)
@@ -100,24 +211,12 @@ def receive(conn, addr):
                 elif login in accounts:
                     if password == accounts[login]:
                         client_conn[conn] = login
-                        if login in aliases:
-                            conn.send("recv_pseudo".encode())
-                            time.sleep(0.5)
-                            conn.send(aliases[login].encode())
-                            time.sleep(0.5)
-                            conn.send("account_validated".encode())
-                            ok = True
-                        elif login not in aliases:
-                            conn.send("account_pseudo".encode())
-                            while pseudo_ok != True:
-                                pseudo = conn.recv(1024).decode()
-                                if pseudo in aliases.values():
-                                    conn.send("pseudo_used".encode())
-                                else:
-                                    conn.send("account_validated".encode())
-                                    aliases[login] = pseudo
-                                    pseudo_ok = True
-                                    ok = True
+                        conn.send("recv_pseudo".encode())
+                        time.sleep(0.5)
+                        conn.send(aliases[login].encode())
+                        time.sleep(0.5)
+                        conn.send("account_validated".encode())
+                        ok = True
                     elif password != accounts[login]:
                         conn.send("erroneous_account".encode())
                 elif login not in accounts:
@@ -141,21 +240,55 @@ def receive(conn, addr):
                     if pseudo in aliases.values():
                         conn.send("pseudo_used".encode())
                     else:
-                        accounts[login] = password
+                        query = "INSERT INTO Comptes (login, mdp, pseudo, salon) VALUES(%s, %s, %s, 1)"
+                        cursor.execute(query, (login, password, pseudo))
+                        connection.commit()
+
+                        query = f"SELECT id_compte FROM Comptes WHERE login='{login}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_compte = result[0][0]
+
+                        query = "INSERT INTO Autorisations (compte, salon, niv_auto) VALUES (%s, %s, %s)"
+                        cursor.execute(query, (id_compte, 1, 1))
+                        connection.commit()
+
                         client_conn[conn] = login
-                        aliases[login] = pseudo
+
                         account_done = True
-                        conn.send("account_validated".encode())        
+                        conn.send("account_validated".encode())    
+                        check_database()    
         else:
             conn.send("account_restart".encode())
 
+    addr = addr[0]
+    if (login, addr) not in account_IP.items():
+        query = f"SELECT id_compte FROM Comptes WHERE login='{login}'"
+        cursor.execute(query)
+        result = cursor.fetchall()
+        id_compte = result[0][0]
+
+        query = "INSERT INTO IP (IP, compte) VALUES (%s, %s)"
+        cursor.execute(query, (str(addr), id_compte))
+        connection.commit()
+
     pseudo = aliases[login]
 
-    client_salon["Général"].append(conn)
-    salon = "Général"
-    if login not in salon_acces[salon]:
-        salon_acces[salon].append(login)
+    query = "SELECT login, mdp, pseudo FROM Comptes"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    for i in range(len(result)):
+        accounts[result[i][0]] = result[i][1]
+        aliases[result[i][0]] = result[i][2]
+    
+    query = f"SELECT Salon.nom_salon FROM Salon INNER JOIN Comptes on Salon.id_salon=Comptes.salon WHERE Comptes.login='{login}'"
+    cursor.execute(query)
+    result = cursor.fetchall()
+    salon = result[0][0]
 
+    client_salon[salon].append(conn)
+
+    print(sanction_kick)
     if login in sanction_ban:
         reply = f"Ce compte est ban permanément"
         conn.send(reply.encode())
@@ -174,6 +307,7 @@ def receive(conn, addr):
             flag = False
 
     while flag != False and flag_all != False:
+        check_database()
         try:
             msg = conn.recv(1024).decode()
         except OSError:
@@ -183,7 +317,7 @@ def receive(conn, addr):
             flag = False
             reply = "server disconnection"
             conn.send(reply.encode())
-        elif msg == "/kill" and client_conn[conn] in superusers:
+        elif msg == "/kill" and client_conn[conn] in superusers and addr == "127.0.0.1":
             for client in clients:
                 client.send("server disconnection".encode())                
             flag_all = False
@@ -195,43 +329,188 @@ def receive(conn, addr):
             command = msg.split(" ")
             if command[1].startswith("@"):
                 target_pseudo = command[1][1:]
-                for k, v in aliases.items():
-                    if v == target_pseudo:
-                        target_login = k
-                if target_login in accounts:
-                    current_time = datetime.now()
-                    release_time = current_time + timedelta(hours=1)
-                    sanction_kick[f"{target_login}"] = release_time
-                    for k, v in client_conn.items():
-                        if v == target_login:
-                            k.send("server disconnection".encode())
-                    reply = f"/!\ L'utilisateur {target_pseudo} a été ban jusqu'à {release_time}"
-                    conn.send(reply.encode())
-                elif target_login not in accounts:
-                    reply = f"/!\ L'utilisateur {target_pseudo} n'existe pas"
-                    conn.send(reply.encode())
+                if target_pseudo in aliases:
+                    query = f"SELECT login FROM Comptes WHERE pseudo='{target_pseudo}'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    target_login = result[0][0]
+                    if target_login in accounts:
+                        current_time = datetime.now()
+                        release_time = current_time + timedelta(hours=1)
+                        query = f"SELECT id_compte FROM Comptes WHERE login='{target_login}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_compte = result[0][0]
+                        query = "INSERT INTO Sanctions (compte, IP, date, type) VALUES (%s, %s, %s, 'kick')"
+                        cursor.execute(query, (id_compte, account_IP[target_login], release_time))
+                        connection.commit()
+                        for k, v in client_conn.items():
+                            if v == target_login:
+                                k.send("server disconnection".encode())
+                        reply = f"/!\ L'utilisateur {target_pseudo} a été ban jusqu'à {release_time}"
+                        conn.send(reply.encode())
+                    elif target_login not in accounts:
+                        reply = f"/!\ L'utilisateur {target_pseudo} n'existe pas"
+                        conn.send(reply.encode())
+                elif target_pseudo in account_IP.values():
+                    target_IP = target_pseudo
+                    query = f"SELECT compte FROM IP WHERE IP.IP='{target_IP}'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    associated_IPs = []
+                    for i in range(len(result)):
+                        associated_IPs.append(result[i][0])
+                    if target_IP in associated_IPs:
+                        current_time = datetime.now()
+                        release_time = current_time + timedelta(hours=1)
+                        query = "INSERT INTO Sanctions (compte, IP, date, type) VALUES (%s, %s, %s, 'kick')"
+                        for i in associated_IPs:
+                            cursor.execute(query, (associated_IPs[i], target_IP, release_time))
+                        connection.commit()
+                        for k, v in client_conn.items():
+                            if v == target_login:
+                                k.send("server disconnection".encode())
+                        reply = f"/!\ L'adress {target_IP} a été ban jusqu'à {release_time}"
+                        conn.send(reply.encode())
+                    elif target_login not in associated_IPs:
+                        reply = f"/!\ Aucun compte n'est associé à l'adresse {target_IP}"
+                        conn.send(reply.encode())
         elif msg.startswith("/kick") and client_conn[conn] not in superusers:
             reply = "Vous n'êtes pas autorisé à utiliser la commande /kick"
+            conn.send(reply.encode())
+        elif msg.startswith("/unkick") and client_conn[conn] in superusers:
+            command = msg.split(" ")
+            if command[1].startswith("@"):
+                target_pseudo = command[1][1:]
+                if target_pseudo in aliases:
+                    query = f"SELECT login FROM Comptes WHERE pseudo='{target_pseudo}'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    target_login = result[0][0]
+                    if target_login in sanction_kick:
+                        query = f"SELECT id_compte FROM Comptes WHERE login='{target_login}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_compte = result[0][0]
+                        query = f"DELETE FROM Sanctions WHERE compte='{id_compte}'"
+                        cursor.execute(query)
+                        connection.commit()
+                        reply = f"/!\ Le ban de l'utilisateur {target_pseudo} a été annulé"
+                        conn.send(reply.encode())
+                    elif target_login not in sanction_kick:
+                        reply = f"/!\ L'utilisateur {target_pseudo} n'est pas sous l'effet d'un ban"
+                        conn.send(reply.encode())
+                elif target_pseudo in account_IP.values():
+                    target_IP = target_pseudo
+                    query = f"SELECT IP FROM Sanctions WHERE type='kick'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    IP_kick = result[0][0]
+                    if target_IP in IP_kick:
+                        query = f"DELETE FROM Sanctions WHERE IP.IP='{target_IP}'"
+                        cursor.execute(query)
+                        connection.commit()
+                        reply = f"/!\ Le ban de l'adresse {target_IP} a été annulé"
+                        conn.send(reply.encode())
+                    elif target_IP not in IP_kick:
+                        reply = f"/!\ L'adresse {target_IP} n'est pas sous l'effet d'un ban"
+                        conn.send(reply.encode())
+        elif msg.startswith("/unkick") and client_conn[conn] not in superusers:
+            reply = "Vous n'êtes pas autorisé à utiliser la commande /unkick"
             conn.send(reply.encode())
         elif msg.startswith("/ban") and client_conn[conn] in superusers:
             command = msg.split(" ")
             if command[1].startswith("@"):
                 target_pseudo = command[1][1:]
-                for k, v in aliases.items():
-                    if v == target_pseudo:
-                        target_login = k
-                if target_login in accounts:
-                    sanction_ban.append(target_login)
-                    for k, v in client_conn.items():
-                        if v == target_login:
-                            k.send("server disconnection".encode())
-                    reply = f"/!\ L'utilisateur {target_pseudo} a été ban indéfiniment"
-                    conn.send(reply.encode())
-                elif target_login not in accounts:
-                    reply = f"/!\ L'utilisateur {target_pseudo} n'existe pas"
-                    conn.send(reply.encode())
+                if target_pseudo in aliases:
+                    query = f"SELECT login FROM Comptes WHERE pseudo='{target_pseudo}'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    target_login = result[0][0]
+                    if target_login in accounts:
+                        query = f"SELECT id_compte FROM Comptes WHERE login='{target_login}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_compte = result[0][0]
+                        query = "INSERT INTO Sanctions (compte, IP, type) VALUES (%s, %s, 'ban')"
+                        cursor.execute(query, (id_compte, account_IP[target_login]))
+                        connection.commit()
+                        sanction_ban.append(target_login)
+                        for k, v in client_conn.items():
+                            if v == target_login:
+                                k.send("server disconnection".encode())
+                        reply = f"/!\ L'utilisateur {target_pseudo} a été ban indéfiniment"
+                        conn.send(reply.encode())
+                    elif target_login not in accounts:
+                        reply = f"/!\ L'utilisateur {target_pseudo} n'existe pas"
+                        conn.send(reply.encode())
+                elif target_pseudo in account_IP.values():
+                    target_IP = target_pseudo
+                    query = f"SELECT compte FROM IP WHERE IP.IP='{target_IP}'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    associated_IPs = []
+                    for i in range(len(result)):
+                        associated_IPs.append(result[i][0])
+                    if target_IP in associated_IPs:
+                        query = "INSERT INTO Sanctions (compte, IP type) VALUES (%s, %s, %s, 'ban')"
+                        for i in associated_IPs:
+                            cursor.execute(query, (associated_IPs[i], target_IP, release_time))
+                        connection.commit()
+                        for k, v in client_conn.items():
+                            if v == target_login:
+                                k.send("server disconnection".encode())
+                        reply = f"/!\ L'adress {target_IP} a été ban indéfinitivement"
+                        conn.send(reply.encode())
+                    elif target_login not in associated_IPs:
+                        reply = f"/!\ Aucun compte n'est associé à l'adresse {target_IP}"
+                        conn.send(reply.encode())
         elif msg.startswith("/ban") and client_conn[conn] not in superusers:
             reply = "Vous n'êtes pas autorisé à utiliser la commande /ban"
+            conn.send(reply.encode())
+        elif msg.startswith("/unban") and client_conn[conn] in superusers:
+            command = msg.split(" ")
+            if command[1].startswith("@"):
+                target_pseudo = command[1][1:]
+                if target_pseudo in aliases:
+                    query = f"SELECT login FROM Comptes WHERE pseudo='{target_pseudo}'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    target_login = result[0][0]
+                    if target_login in accounts:
+                        query = f"SELECT id_compte FROM Comptes WHERE login='{target_login}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_compte = result[0][0]
+                        query = f"DELETE FROM Sanctions WHERE compte='{id_compte}'"
+                        cursor.execute(query)
+                        connection.commit()
+                        sanction_ban.append(target_login)
+                        for k, v in client_conn.items():
+                            if v == target_login:
+                                k.send("server disconnection".encode())
+                        reply = f"/!\ Le ban permanent de l'utilisateur {target_pseudo} a été annulé"
+                        conn.send(reply.encode())
+                    elif target_login not in accounts:
+                        reply = f"/!\ L'utilisateur {target_pseudo} n'est pas sous l'effet d'un ban"
+                        conn.send(reply.encode())
+                elif target_pseudo in account_IP.values():
+                    target_IP = target_pseudo
+                    query = "SELECT IP FROM Sanctions WHERE type='ban'"
+                    cursor.execute(query)
+                    result = cursor.fetchall()
+                    IP_kick = result[0][0]
+                    if target_IP in IP_kick:
+                        query = f"DELETE FROM Sanctions WHERE IP='{target_IP}'"
+                        cursor.execute(query)
+                        connection.commit()
+                        reply = f"/!\ Le ban de l'adresse {target_IP} a été annulé"
+                        conn.send(reply.encode())
+                    elif target_IP not in IP_kick:
+                        reply = f"/!\ L'adresse {target_IP} n'est pas sous l'effet d'un ban"
+                        conn.send(reply.encode())
+        elif msg.startswith("/unban") and client_conn[conn] not in superusers:
+            reply = "Vous n'êtes pas autorisé à utiliser la commande /unban"
             conn.send(reply.encode())
         elif msg.startswith("/access"):
             command = msg.split(" ")
@@ -249,6 +528,18 @@ def receive(conn, addr):
                         client_salon[salon].remove(conn)
                         salon = target
                         client_salon[salon].append(conn)
+
+                        query = f"SELECT id_salon FROM Salon WHERE nom_salon='{salon}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_salon = result[0][0]
+
+                        query = f"UPDATE Comptes SET salon={id_salon} WHERE login='{login}'"
+                        cursor.execute(query)
+                        connection.commit()
+
+                        reply = f"Déplacement dans le salon {salon}"
+                        conn.send(reply.encode())
             elif len(command) == 3:
                 if command[1].startswith("salon_") and command[2].startswith("@"):
                     target_pseudo = command[2][1:]
@@ -256,13 +547,39 @@ def receive(conn, addr):
                         if v == target_pseudo:
                             target_login = k
                     if target_pseudo == admin_salon["Blabla"]:
-                        salon_acces["Blabla"].append(login)
+                        query = f"SELECT id_compte FROM Comptes WHERE login='{login}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        id_compte = result[0][0]
+
+                        query = "INSERT INTO Autorisations (compte, salon, niv_auto) VALUES (%s, %s, %s)"
+                        cursor.execute(query, (id_compte, 2, 1))
+                        connection.commit()
+
                         reply = "Accès au salon 'Blabla' accordé"
                         conn.send(reply.encode())
-                    elif target_login == admin_salon[command[1][6:]]:
+                    elif target_pseudo == aliases[admin_salon[command[1][6:]]]:
+                        query = f"SELECT id_compte FROM Comptes WHERE pseudo='{target_pseudo}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        admin = result[0][0]
+
+                        query = f"SELECT id_salon FROM Salon WHERE nom_salon='{command[1][6:]}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        salon = result[0][0]
+
+                        query = f"SELECT id_compte FROM Comptes WHERE pseudo='{pseudo}'"
+                        cursor.execute(query)
+                        result = cursor.fetchall()
+                        compte = result[0][0]
+
+                        query = "INSERT INTO Requetes (compte, admin, salon) VALUES (%s, %s, %s)"
+                        cursor.execute(query, (compte, admin, salon))
+                        connection.commit()
+
                         reply = f"Une requête à été faite auprès de {target_pseudo} pour accéder au salon {command[1][6:]}"
                         conn.send(reply.encode())
-                        salon_request[target_login].append(pseudo)
         elif msg == "/requests" and login in admin_salon.values():
             reply = f"Requêtes pour l'utilisateur {pseudo}:\n"
             for i in range(len(salon_request[login])):
@@ -279,7 +596,23 @@ def receive(conn, addr):
                 for indiv_salon in admin_salon:
                     if admin_salon[indiv_salon] == login:
                         if user_login not in salon_acces[indiv_salon]:
-                            salon_acces[indiv_salon].append(user_login)
+                            query = f"SELECT id_compte FROM Comptes WHERE login='{user_login}'"
+                            cursor.execute(query)
+                            result = cursor.fetchall()
+                            id_compte = result[0][0]
+
+                            query = f"SELECT id_salon FROM Salon WHERE nom_salon='{indiv_salon}'"
+                            cursor.execute(query)
+                            result = cursor.fetchall()
+                            id_salon = result[0][0]
+
+                            query = "INSERT INTO Autorisations (compte, salon, niv_auto) VALUES (%s, %s, %s)"
+                            cursor.execute(query, (id_compte, id_salon, 1))
+                            connection.commit()
+
+                            query = f"DELETE FROM Requetes WHERE compte='{id_compte}'"
+                            cursor.execute(query)
+                            connection.commit()
                             for id in client_conn:
                                 if client_conn[id] == user_login:
                                     reply = f"Votre accès au salon {indiv_salon} a été permis"
@@ -299,7 +632,14 @@ def receive(conn, addr):
                 for indiv_salon in admin_salon:
                     if admin_salon[indiv_salon] == login:
                         if user_login not in salon_acces[indiv_salon]:
-                            salon_request[login].remove(user_pseudo)
+                            query = f"SELECT id_compte FROM Comptes WHERE login='{user_login}'"
+                            cursor.execute(query)
+                            result = cursor.fetchall()
+                            id_compte = result[0][0]
+
+                            query = f"DELETE FROM Requetes WHERE compte='{id_compte}'"
+                            cursor.execute(query)
+                            connection.commit()
                             for id in client_conn:
                                 if client_conn[id] == user_login:
                                     reply = f"Votre accès au salon {indiv_salon} a été refusé"
@@ -316,6 +656,7 @@ def receive(conn, addr):
             for client in client_salon[salon]:
                 if client_conn[client] != "":
                     client.send(f"[{salon}] {pseudo} > {msg}".encode())
+                    register_msg(msg, login, salon)          
         elif msg == "":
             flag = False
 
